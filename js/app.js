@@ -520,7 +520,7 @@ async function boot() {
       if (evt.state === 'in') { hideGate(); mountEntries(); }
       else if (evt.state === 'out') { showGate(true); S.entries = []; render(); }
       else if (evt.state === 'refused') {
-        showGate(true, 'This account doesn’t have access to this library. Sign in with the account it was set up for.');
+        showGate(true, 'This account doesn’t have access to this library.', true);
       }
     });
   }
@@ -551,15 +551,20 @@ function maybeSeed(rows) {
   });
 }
 
-function showGate(needsSignIn, message) {
+function showGate(needsSignIn, message, denied) {
   const gate = $('#gate');
   const shell = $('#shell');
   if (!needsSignIn) { gate.hidden = true; shell.hidden = false; return; }
   shell.hidden = true;
   gate.hidden = false;
+  const banner = denied
+    ? '<div class="gate-denied"><span class="gate-denied-icon" aria-hidden="true">!</span>'
+      + esc(message || 'This account doesn’t have access to this library.') + '</div>'
+      + '<p>Sign in with the account this was set up for.</p>'
+    : '<p>' + esc(message || 'Sign in once to open your library. You will not be asked again on this device.') + '</p>';
   gate.innerHTML = '<div class="gate">'
     + '<p class="wordmark-lg">' + esc(APP_NAME) + '</p>'
-    + '<p>' + esc(message || 'Sign in once to open your library. You will not be asked again on this device.') + '</p>'
+    + banner
     + '<button class="btn primary" data-act="signin">Sign in with Google</button>'
     + '</div>';
 }

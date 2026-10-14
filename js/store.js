@@ -25,11 +25,8 @@ let lastAuthEvent = null; // replayed to a late subscriber — see onAuth()
 let entriesCb = null;
 let unsubscribeEntries = null;
 let currentUser = null;
-// Set right before WE call signOut() after refusing an account, so the
-// listener below can tell "we just forced this sign-out" apart from any
-// other reason the user becomes null — see both uses, and the comment
-// on the listener itself.
-let suppressNextOut = false;
+let refusedEmail = '';
+let refusedUntil = 0; // Date.now() ms — see refuse() below
 
 export function getMode() {
   return mode;
@@ -82,28 +79,30 @@ export async function init() {
     }
 
     authMod.onAuthStateChanged(auth, (user) => {
-      // Our own signOut() below (for a refused account) fires THIS SAME
-      // listener again a moment later, with user === null — otherwise
-      // indistinguishable from any other sign-out. Without this check, that
-      // second, automatic event overwrites the refusal message we just
-      // showed with the plain default gate, a moment after it appeared.
-      if (user === null && suppressNextOut) {
-        suppressNextOut = false;
-        return;
-      }
-      if (user && !isAllowed(user.email)) {
-        // Signed in with an account that is not on the list. Refuse and
-        // sign out, so we never render someone else's view of the data.
+      if (user === null) {
+        if (Date.now() < refusedUntil) {
+          // Our own signOut() inside refuse() fires THIS SAME listener
+          // again a moment later, with user === null — in no way
+          // distinguishable from an ordinary sign-out by itself. Rather
+          // than try to predict exactly when that follow-up event
+          // arrives (which proved unreliable), keep re-asserting the
+          // refusal for a few seconds after it happens: however many
+          // times this fires with no user in that window, for whatever
+          // reason, the answer stays "refused", not "signed out".
+          emitAuth({ state: 'refused', email: refusedEmail });
+          return;
+        }
         currentUser = null;
-        suppressNextOut = true;
-        authMod.signOut(auth);
-        emitAuth({ state: 'refused', email: user.email || '' });
+        emitAuth({ state: 'out', user: null });
         return;
       }
-      currentUser = user
-        ? { email: (user.email || '').toLowerCase(), name: user.displayName || '', photo: user.photoURL || '' }
-        : null;
-      emitAuth({ state: user ? 'in' : 'out', user: currentUser });
+      if (!isAllowed(user.email)) {
+        refuse(user.email, authMod, auth);
+        return;
+      }
+      refusedUntil = 0;
+      currentUser = { email: (user.email || '').toLowerCase(), name: user.displayName || '', photo: user.photoURL || '' };
+      emitAuth({ state: 'in', user: currentUser });
     });
 
     return { mode };
@@ -118,6 +117,19 @@ export async function init() {
 function isAllowed(email) {
   if (!ALLOWED_EMAILS.length) return true; // not locked down yet
   return ALLOWED_EMAILS.map((s) => s.toLowerCase()).includes((email || '').toLowerCase());
+}
+
+// The one place an account gets refused, called from either source: the
+// client-side allowlist check above (unused while ALLOWED_EMAILS is empty)
+// or Firestore's own 'permission-denied' in subscribe() below. Opens an
+// 8-second window (see the listener in init()) during which the refusal
+// keeps being reasserted no matter how the sign-out itself plays out.
+function refuse(email, authMod, auth) {
+  refusedEmail = email || '';
+  refusedUntil = Date.now() + 8000;
+  currentUser = null;
+  authMod.signOut(auth);
+  emitAuth({ state: 'refused', email: refusedEmail });
 }
 
 /* ------------------------------------------------------------------ *
@@ -203,10 +215,7 @@ export function subscribe(cb) {
       // with a plain explanation, rather than leaving them staring at a
       // library that silently never loads.
       if (err && err.code === 'permission-denied' && fb) {
-        const email = (currentUser && currentUser.email) || '';
-        suppressNextOut = true;
-        fb.authMod.signOut(fb.auth);
-        emitAuth({ state: 'refused', email });
+        refuse((currentUser && currentUser.email) || '', fb.authMod, fb.auth);
         return;
       }
       cb([], err);
