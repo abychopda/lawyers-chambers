@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// This file is a TEMPLATE, kept deliberately generic so no real email
+// address is ever committed to this repo, including its git history.
+//
+// Replace the two placeholders below with the real Gmail addresses and
+// paste the result into Firebase console → Firestore Database → Rules
+// → Publish. That pasted version — inside the Firebase console, never
+// in this repo — is what actually enforces access. js/config.js's
+// ALLOWED_EMAILS is empty for the same reason; see the comment there.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /entries/{entryId} {
+      allow read, write: if request.auth != null
+        && request.auth.token.email.lower() in [
+          'first-account@example.com',
+          'second-account@example.com'
+        ];
+    }
+    // Everything else is denied by default — there is no other collection.
+  }
+}
