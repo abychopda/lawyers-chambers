@@ -25,6 +25,11 @@ let lastAuthEvent = null; // replayed to a late subscriber — see onAuth()
 let entriesCb = null;
 let unsubscribeEntries = null;
 let currentUser = null;
+// Set right before WE call signOut() after refusing an account, so the
+// listener below can tell "we just forced this sign-out" apart from any
+// other reason the user becomes null — see both uses, and the comment
+// on the listener itself.
+let suppressNextOut = false;
 
 export function getMode() {
   return mode;
@@ -77,10 +82,20 @@ export async function init() {
     }
 
     authMod.onAuthStateChanged(auth, (user) => {
+      // Our own signOut() below (for a refused account) fires THIS SAME
+      // listener again a moment later, with user === null — otherwise
+      // indistinguishable from any other sign-out. Without this check, that
+      // second, automatic event overwrites the refusal message we just
+      // showed with the plain default gate, a moment after it appeared.
+      if (user === null && suppressNextOut) {
+        suppressNextOut = false;
+        return;
+      }
       if (user && !isAllowed(user.email)) {
         // Signed in with an account that is not on the list. Refuse and
         // sign out, so we never render someone else's view of the data.
         currentUser = null;
+        suppressNextOut = true;
         authMod.signOut(auth);
         emitAuth({ state: 'refused', email: user.email || '' });
         return;
@@ -189,6 +204,7 @@ export function subscribe(cb) {
       // library that silently never loads.
       if (err && err.code === 'permission-denied' && fb) {
         const email = (currentUser && currentUser.email) || '';
+        suppressNextOut = true;
         fb.authMod.signOut(fb.auth);
         emitAuth({ state: 'refused', email });
         return;
