@@ -507,39 +507,16 @@ function setupHeader() {
   $('#appname').textContent = APP_NAME;
 }
 
-// TEMPORARY — remove once the sign-in refusal issue is confirmed fixed.
-// Visit the site with #debug on the end of the URL (e.g. .../index.html#debug)
-// to see a running, on-screen log of auth events and any load errors —
-// exactly what's happening, in plain text, instead of a guess from a
-// one-line description. Invisible and inert with no #debug in the URL.
-const DEBUG = location.hash.indexOf('debug') >= 0;
-function debugLog(line) {
-  if (!DEBUG) return;
-  let panel = document.getElementById('debugPanel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'debugPanel';
-    panel.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:999;max-height:40vh;overflow:auto;'
-      + 'background:#000;color:#0f0;font:11px/1.5 monospace;padding:8px;white-space:pre-wrap;';
-    document.body.appendChild(panel);
-  }
-  const t = new Date().toISOString().slice(11, 19);
-  panel.textContent += '[' + t + '] ' + line + '\n';
-  panel.scrollTop = panel.scrollHeight;
-}
-
 async function boot() {
   setupHeader();
   render();
 
   const info = await store.init();
-  debugLog('store.init -> ' + JSON.stringify(info));
 
   if (info.mode === 'local') {
     showGate(false);
   } else {
     store.onAuth((evt) => {
-      debugLog('auth event -> ' + JSON.stringify(evt));
       if (evt.state === 'in') { hideGate(); mountEntries(); }
       else if (evt.state === 'out') { showGate(true); S.entries = []; render(); }
       else if (evt.state === 'refused') {
@@ -554,12 +531,7 @@ async function boot() {
 let seedAttempted = false;
 function mountEntries() {
   store.subscribe((rows, err) => {
-    if (err) {
-      debugLog('subscribe error -> code=' + (err && err.code) + ' message=' + (err && err.message));
-      toast('Could not load entries. Check your connection.');
-      return;
-    }
-    debugLog('subscribe ok -> ' + rows.length + ' row(s)');
+    if (err) { toast('Could not load entries. Check your connection.'); return; }
     S.entries = rows;
     search.reindex(rows);
     render();
