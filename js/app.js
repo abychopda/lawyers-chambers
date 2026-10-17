@@ -292,13 +292,6 @@ function openAbout() {
   DEDICATION.forEach((p) => { h += '<p>' + esc(p) + '</p>'; });
   h += '<p class="sig">' + esc(DEDICATION_SIGNOFF) + '</p></div>';
 
-  const examples = S.entries.filter((e) => e.example);
-  if (examples.length) {
-    h += '<div class="band"><h3>Housekeeping</h3><span class="rule"></span></div>'
-      + '<div class="card"><p style="margin:0 0 10px;font-size:14px">There ' + (examples.length === 1 ? 'is 1 example entry' : 'are ' + examples.length + ' example entries') + ' in here to show the shape of things. Verify the citations before relying on them, or clear them out.</p>'
-      + '<button class="btn danger sm" data-act="clear-examples">Clear example entries</button></div>';
-  }
-
   h += '<div class="band"><h3>About</h3><span class="rule"></span></div>'
     + '<div class="card"><p style="margin:0;font-size:13px;line-height:1.6" class="muted">'
     + esc(APP_NAME) + ' · a private research library. '
@@ -384,14 +377,6 @@ async function toggleStar(id) {
   try { await store.save(Object.assign({}, e, { starred: !e.starred })); openReader(byId(id) || e); }
   catch (err) { handleWriteError(err); }
 }
-async function clearExamples() {
-  const examples = S.entries.filter((e) => e.example);
-  try {
-    for (const e of examples) await store.remove(e.id);
-    toast('Examples cleared.');
-  } catch (e) { handleWriteError(e); }
-}
-
 /* ===================== render ===================== */
 function render() {
   renderHeader();
@@ -449,7 +434,6 @@ document.addEventListener('click', (ev) => {
   if (a === 'do-del') { doDelete(t.getAttribute('data-id')); return; }
   if (a === 'star') { toggleStar(t.getAttribute('data-id')); return; }
   if (a === 'about') { openAbout(); return; }
-  if (a === 'clear-examples') { clearExamples(); return; }
   if (a === 'signin') { store.signIn().catch((e) => toast('Could not sign in: ' + (e && e.message ? e.message : 'try again'))); return; }
   if (a === 'signout') { store.signOutNow(); closeSheet(); return; }
   if (a === 'star-filter') {
