@@ -50,10 +50,11 @@ export const APP_TAGLINE = 'corporate law';
 
 /** Shown once under "About", not on the front page. */
 export const DEDICATION = [
-  'This is for your last year of it. You read more than anyone I know, and almost none of it is written down anywhere you could find again.',
-  'So keep it here. The ratio in your own words, the order you disagreed with, the argument you want to take apart later. In five years you will be in a room full of people who did not write any of this down.',
+  "You read more than anyone I know, and you're going to be excellent at this. This is a place to keep it all: the cases, the arguments, the reading that's quietly building the lawyer you're going to be.",
+  "It's not a card. I built it because I believe in where you're headed, and I wanted something that's still useful to you in ten years, not just today.",
+  'I see how hard you work, and I’m proud of you. Happy birthday, Radhika. I love you.',
 ];
-export const DEDICATION_SIGNOFF = 'Happy birthday. — A';
+export const DEDICATION_SIGNOFF = 'A';
 
 /** True once Firebase has been filled in. */
 export function isConfigured() {
